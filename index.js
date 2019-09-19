@@ -1,5 +1,5 @@
-const { promisify } = require("util");
 const execa = require("execa");
+const path = require("path");
 const KUBECTL_PATH = path.join(__dirname, "kubectl"); // ./
 
 const mongoose = require("mongoose");
@@ -23,8 +23,12 @@ module.exports = authenticate(async (req, res) => {
   console.log("Grabbing all teams...");
   const allTeams = await Team.find().populate("latestScript").exec();
 
+  console.log(allTeams);
+
   console.log("Grabbing all scripts...");
-  const allScripts = await Script.find().populate("key").exec();
+  const allScripts = await Script.find().exec();
+
+  console.log(allScripts);
 
   if (allTeams.length == 0) {
     send(res, 401, "Error: there are no teams to remove games!");
@@ -42,7 +46,7 @@ module.exports = authenticate(async (req, res) => {
   //TODO: Test; remove later
   console.log(currentVersions);
 
-  allScripts.forEach(script => {
+  allScripts.forEach(async (script) => {
     const scriptId = script._id;
     if (!currentVersions.includes(scriptId)) {
       console.log(`Removing old deployment for ${scriptId}`);
