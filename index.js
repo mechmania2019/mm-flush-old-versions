@@ -1,6 +1,6 @@
 const execa = require("execa");
 const path = require("path");
-const KUBECTL_PATH = path.join(__dirname, "kubectl"); // ./
+const KUBECTL_PATH = path.join(__dirname, "kubectl");
 
 const mongoose = require("mongoose");
 const authenticate = require("mm-authenticate")(mongoose);
@@ -23,12 +23,8 @@ module.exports = authenticate(async (req, res) => {
   console.log("Grabbing all teams...");
   const allTeams = await Team.find().populate("latestScript").exec();
 
-  console.log(allTeams);
-
   console.log("Grabbing all scripts...");
   const allScripts = await Script.find().exec();
-
-  console.log(allScripts);
 
   if (allTeams.length == 0) {
     send(res, 401, "Error: there are no teams to remove games!");
@@ -41,13 +37,13 @@ module.exports = authenticate(async (req, res) => {
   }
 
   console.log("Getting latest scripts of all teams...");
-  const currentVersions = allTeams.filter(team => team.hasOwnProperty("lastestScript")).map(team => team.latestScript);
+  const currentVersions = allTeams.filter(team => team.hasOwnProperty("lastestScript")).map(team => team.latestScript.toString());
 
-  //TODO: Test; remove later
   console.log(currentVersions);
 
   allScripts.forEach(async (script) => {
-    const scriptId = script._id;
+    const scriptId = script._id.toString();
+    console.log(scriptId);
     if (!currentVersions.includes(scriptId)) {
       console.log(`Removing old deployment for ${scriptId}`);
 
@@ -74,6 +70,8 @@ module.exports = authenticate(async (req, res) => {
 
       console.log(killServProc.stdout);
       console.warn(killServProc.stderr);
+    } else {
+      console.log(`Script ${scriptId} is a current version; do not destroy.`);
     }
   });
 
