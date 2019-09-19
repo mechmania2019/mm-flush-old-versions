@@ -1,13 +1,11 @@
 const { promisify } = require("util");
+const execa = require("execa");
+const KUBECTL_PATH = path.join(__dirname, "kubectl"); // ./
 
 const mongoose = require("mongoose");
 const authenticate = require("mm-authenticate")(mongoose);
 const { Script, Team } = require("mm-schemas")(mongoose);
 const { send, buffer } = require("micro");
-
-const amqp = require("amqplib");
-const RABBITMQ_URI = process.env.RABBITMQ_URI || "amqp://localhost";
-const STANCHION_QUEUE = `stanchionQueue`;
 
 mongoose.connect(process.env.MONGO_URL, {
   useNewUrlParser: true,
@@ -22,37 +20,58 @@ module.exports = authenticate(async (req, res) => {
     return;
   }
 
-  const conn = await amqp.connect(RABBITMQ_URI);
-  const ch = await conn.createChannel();
-  ch.assertQueue(STANCHION_QUEUE, { durable: true });
-  ch.prefetch(1);
-  process.on("SIGTERM", async () => {
-    console.log("Got SIGTERM");
-    await ch.close();
-    conn.close();
-  });
-
   console.log("Grabbing all teams...");
   const allTeams = await Team.find().populate("latestScript").exec();
 
+  console.log("Grabbing all scripts...");
+  const allScripts = await Script.find().populate("key").exec();
+
   if (allTeams.length == 0) {
-    send(res, 401, "Error: there are no teams to queue games!");
+    send(res, 401, "Error: there are no teams to remove games!");
     return;
   }
 
-  console.log("Sending everyone off to stanchion...");
+  if (allScripts.length == 0) {
+    send(rest, 401, "Error: there are no bots to clear!");
+    return;
+  }
 
-  allTeams.forEach(team => {
-    if (team.latestScript) {
-      scriptKey = team.latestScript.key;
-      console.log(`${scriptKey} - Notifying ${STANCHION_QUEUE}`);
-      ch.sendToQueue(STANCHION_QUEUE, Buffer.from(scriptKey), {
-        persistent: true
-      });
-    } else {
-      console.log(`There are no logs for ${team}`);
+  console.log("Getting latest scripts of all teams...");
+  const currentVersions = allTeams.filter(team => team.hasOwnProperty("lastestScript")).map(team => team.latestScript);
+
+  //TODO: Test; remove later
+  console.log(currentVersions);
+
+  allScripts.forEach(script => {
+    const scriptId = script._id;
+    if (!currentVersions.includes(scriptId)) {
+      console.log(`Removing old deployment for ${scriptId}`);
+
+      const killDepProc = await execa(KUBECTL_PATH, 
+        [  
+          "delete", 
+          "deployment",
+          "-l",
+          `bot=${script.key}`
+        ]);
+
+      console.log(killDepProc.stdout);
+      console.warn(killDepProc.stderr);
+
+      console.log(`Removing old service for ${scriptId}`);
+
+      const killServProc = await execa(KUBECTL_PATH, 
+        [  
+          "delete", 
+          "service",
+          "-l",
+          `bot=${script.key}`
+        ]);
+
+      console.log(killServProc.stdout);
+      console.warn(killServProc.stderr);
     }
   });
 
-  send(res, 200, "All games queued!");
+  send(res, 200, "All old versions removed!");
 });

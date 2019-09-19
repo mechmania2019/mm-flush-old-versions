@@ -25,11 +25,6 @@ spec:
               secretKeyRef:
                 name: creds
                 key: mongo
-          - name: RABBITMQ_URI
-            valueFrom:
-              secretKeyRef:
-                name: creds
-                key: rabbitmq
 ---
 apiVersion: v1
 kind: Service
