@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: queue-all
+  labels:
+    app: queue-all
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: queue-all
+  template:
+    metadata:
+      labels:
+        app: queue-all
+    spec:
+      containers:
+      - name: queue-all
+        image: gcr.io/mechmania2017/queue-all:latest
+        ports:
+        - containerPort: 3000
+        env:
+          - name: MONGO_URL
+            valueFrom:
+              secretKeyRef:
+                name: creds
+                key: mongo
+          - name: RABBITMQ_URI
+            valueFrom:
+              secretKeyRef:
+                name: creds
+                key: rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: queue-all-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: queue-all
+  ports:
+  - port: 80
+    name: queue-all-service
+    targetPort: 3000
+    protocol: TCP

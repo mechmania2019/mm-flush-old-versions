@@ -1,0 +1,14 @@
+{
+  "name": "queue-all",
+  "scripts": {
+    "start": "micro .",
+    "deploy": "./deploy.sh"
+  },
+  "dependencies": {
+    "amqplib": "0.5.2",
+    "micro": "9.1.0",
+    "mm-authenticate": "0.0.10",
+    "mm-schemas": "0.0.10",
+    "mongoose": "5.7.1"
+  }
+}
