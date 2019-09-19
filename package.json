@@ -1,5 +1,5 @@
 {
-  "name": "queue-all",
+  "name": "flush-old-versions",
   "scripts": {
     "start": "micro .",
     "deploy": "./deploy.sh"

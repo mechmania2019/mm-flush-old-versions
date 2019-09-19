@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: queue-all
+  name: flush-old-versions
   labels:
-    app: queue-all
+    app: flush-old-versions
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: queue-all
+      app: flush-old-versions
   template:
     metadata:
       labels:
-        app: queue-all
+        app: flush-old-versions
     spec:
       containers:
-      - name: queue-all
-        image: gcr.io/mechmania2017/queue-all:latest
+      - name: flush-old-versions
+        image: gcr.io/mechmania2017/flush-old-versions:latest
         ports:
         - containerPort: 3000
         env:
@@ -34,13 +34,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: queue-all-service
+  name: flush-old-versions-service
 spec:
   type: LoadBalancer
   selector:
-    app: queue-all
+    app: flush-old-versions
   ports:
   - port: 80
-    name: queue-all-service
+    name: flush-old-versions-service
     targetPort: 3000
     protocol: TCP
