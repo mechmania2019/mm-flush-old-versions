@@ -21,7 +21,7 @@ module.exports = authenticate(async (req, res) => {
   }
 
   console.log("Grabbing all teams...");
-  const allTeams = await Team.find().populate("latestScript").exec();
+  const allTeams = await Team.find().populate("latestScript").populate("mostRecentPush").exec();
 
   console.log("Grabbing all scripts...");
   const allScripts = await Script.find().exec();
@@ -36,42 +36,70 @@ module.exports = authenticate(async (req, res) => {
     return;
   }
 
+  // Remove IP address from old script, then only query scripts with IP addresses and by latest script
+
   console.log("Getting latest scripts of all teams...");
-  const currentVersions = allTeams.filter(team => team.hasOwnProperty("lastestScript")).map(team => team.latestScript.toString());
+  const currentVersions = allTeams.filter(team => { 
+    console.log(`team ${team}`);
+    return !!team.latestScript && !!team.mostRecentPush;
+  }).map(team => {
+    return team.latestScript.key.toString();
+  });
 
   console.log(currentVersions);
 
+  const tenMinutes = new Date(1970, 01, 01, 00, 10)
+
+  console.log("Filtering out scripts without IP addresses... and are at least 10 minutes old");
+  const currentScripts = allScripts.filter(script => {
+    console.log(`script ${script}`);
+    const createdDate = new Date(script.createdAt);
+    const nowDate = new Date();
+
+    return !!script.ip && nowDate - createdDate >= tenMinutes;
+  }).map(script => {
+    return script.toString();
+  })
+
+  console.log(currentScripts);
+
   allScripts.forEach(async (script) => {
-    const scriptId = script._id.toString();
-    console.log(scriptId);
-    if (!currentVersions.includes(scriptId)) {
-      console.log(`Removing old deployment for ${scriptId}`);
+    const scriptKey = script.key.toString();
+
+    if (!currentVersions.includes(scriptKey)) {
+      console.log(`Removing old deployment for ${scriptKey}`);
+      
+      if (!!script.ip) {
+        console.log(`\nRemoving ${script.ip} ip from script ${script}\n`);
+        script.ip = undefined;
+        await script.save();
+      }
 
       const killDepProc = await execa(KUBECTL_PATH, 
         [  
           "delete", 
           "deployment",
           "-l",
-          `bot=${script.key}`
+          `bot=${scriptKey}`
         ]);
 
       console.log(killDepProc.stdout);
       console.warn(killDepProc.stderr);
 
-      console.log(`Removing old service for ${scriptId}`);
+      console.log(`Removing old service for ${scriptKey}`);
 
       const killServProc = await execa(KUBECTL_PATH, 
         [  
           "delete", 
           "service",
           "-l",
-          `bot=${script.key}`
+          `bot=${scriptKey}`
         ]);
 
       console.log(killServProc.stdout);
       console.warn(killServProc.stderr);
     } else {
-      console.log(`Script ${scriptId} is a current version; do not destroy.`);
+      console.log(`Script ${scriptKey} is a current version or younger than 10 minutes; do not destroy.`);
     }
   });
 
