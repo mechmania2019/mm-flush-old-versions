@@ -27,12 +27,12 @@ module.exports = authenticate(async (req, res) => {
   const allScripts = await Script.find().exec();
 
   if (allTeams.length == 0) {
-    send(res, 401, "Error: there are no teams to remove games!");
+    send(res, 200, "Error: there are no teams to remove games!");
     return;
   }
 
   if (allScripts.length == 0) {
-    send(rest, 401, "Error: there are no bots to clear!");
+    send(res, 200, "Error: there are no bots to clear!");
     return;
   }
 
